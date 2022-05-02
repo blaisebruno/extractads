@@ -1,0 +1,128 @@
+
+
+// Ads Extractor 0.99 
+// By Blaise & Bruno  05-2022  - blaisebruno.com 
+// 
+//
+// Extract all the advertising messages (Ads) from a Google Ads account into a Google Sheet (headlines + description) 
+// Ads type: Search (ETA + Responsive), Gmail, Discovery (multi_asset).   Perf_max not reachable by API (05/2022)
+
+
+
+// Your google sheet (reachable by same google ads user)
+var SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1y6POC7ZMZBkOjdkPclqJ9LxOIUtl7c7HqtKRwGuRkJU/" ; 
+
+// Filter by campaign name (or let blamk for whole account extraction) 
+var CAMPAIGN_LIKE = "" ;  
+
+// Filter by ad status (or let blank for any status)
+var AD_STATUS = "ENABLED" ;  // ENABLED, PAUSED, REMOVED  
+
+
+
+function main() {
+  
+  var ss = SpreadsheetApp.openByUrl(SPREADSHEET_URL); 
+  result = extractAds(ss); 
+    
+  } 
+ 
+  
+function extractAds(ss) {  
+  
+ var gaql =  `SELECT ad_group_ad.ad.type, 
+              ad_group_ad.ad.responsive_search_ad.headlines,
+              ad_group_ad.ad.responsive_search_ad.descriptions,
+              ad_group_ad.ad.expanded_text_ad.headline_part1,
+              ad_group_ad.ad.expanded_text_ad.headline_part2,
+              ad_group_ad.ad.expanded_text_ad.headline_part3,
+              ad_group_ad.ad.expanded_text_ad.description,
+              ad_group_ad.ad.expanded_text_ad.description2,
+              ad_group_ad.ad.gmail_ad.teaser.headline,
+              ad_group_ad.ad.gmail_ad.teaser.description,
+              ad_group_ad.ad.discovery_multi_asset_ad.headlines,
+              ad_group_ad.ad.discovery_multi_asset_ad.descriptions           
+              FROM ad_group_ad 
+              `;
+  
+  if (CAMPAIGN_LIKE || AD_STATUS) gaql += " WHERE " ;
+  if (CAMPAIGN_LIKE) gaql += " campaign.name LIKE '%" + CAMPAIGN_LIKE + "%'" ;   
+  if (AD_STATUS) gaql += " ad_group_ad.status = '" + AD_STATUS + "'" ;  
+ 
+  rows = AdsApp.report(gaql, {}).rows() ;  
+  
+  var headlines = [] ;
+  var descriptions = [] ; 
+  
+  var sheetHeadlines = ss.getSheetByName("Headlines"); 
+  sheetHeadlines.activate();
+  sheetHeadlines.clearContents(); 
+  
+  var sheetDescriptions = ss.getSheetByName("Descriptions"); 
+  sheetDescriptions.activate();
+  sheetDescriptions.clearContents(); 
+  
+  while (rows.hasNext()) {
+
+   var row = rows.next();
+    
+   var adType = row['ad_group_ad.ad.type'] ;   
+   Logger.log("adType | " + adType);  
+    
+   var adHeadings, adDescriptions ;  
+
+
+   if (adType == 'EXPANDED_TEXT_AD') {
+         adHeadings = row['ad_group_ad.ad.expanded_text_ad.headline_part1'] ;
+         if (headlines.indexOf(adHeadings) === -1) headlines.push(adHeadings);
+         adHeadings = row['ad_group_ad.ad.expanded_text_ad.headline_part2'] ;
+         if (headlines.indexOf(adHeadings) === -1) headlines.push(adHeadings);
+         adHeadings = row['ad_group_ad.ad.expanded_text_ad.headline_part3'] ;
+         if (headlines.indexOf(adHeadings) === -1) headlines.push(adHeadings);
+
+         adDescriptions = row['ad_group_ad.ad.expanded_text_ad.description'] ;
+         if (descriptions.indexOf(adDescriptions) === -1) descriptions.push(adDescriptions);
+         adDescriptions = row['ad_group_ad.ad.expanded_text_ad.description2'] ;
+         if (descriptions.indexOf(adDescriptions) === -1) descriptions.push(adDescriptions);    
+   }  
+   else if (adType == 'GMAIL_AD') {
+         adHeadings = row['ad_group_ad.ad.gmail_ad.teaser.headline'] ;
+         if (headlines.indexOf(adHeadings) === -1) headlines.push(adHeadings);
+         adDescriptions = row['ad_group_ad.ad.gmail_ad.teaser.description'] ;
+         if (descriptions.indexOf(adDescriptions) === -1) descriptions.push(adDescriptions);       
+   } 
+   else if (adType == 'RESPONSIVE_SEARCH_AD') {
+         adHeadings = row['ad_group_ad.ad.responsive_search_ad.headlines'] ;
+         adHeadings.forEach(function(adHeading){
+            if (headlines.indexOf(adHeading.text) === -1) headlines.push(adHeading.text);      
+         }); 
+         adDescriptions = row['ad_group_ad.ad.responsive_search_ad.descriptions'] ;
+         adDescriptions.forEach(function(adDescription){
+            if (descriptions.indexOf(adDescription.text) === -1) descriptions.push(adDescription.text);      
+         }); 
+   }   
+   else if (adType == 'DISCOVERY_MULTI_ASSET_AD') {  
+         adHeadings = row['ad_group_ad.ad.discovery_multi_asset_ad.headlines'] ;
+         adHeadings.forEach(function(adHeading){
+            if (headlines.indexOf(adHeading.text) === -1) headlines.push(adHeading.text);      
+         }); 
+         adDescriptions = row['ad_group_ad.ad.discovery_multi_asset_ad.descriptions'] ;
+         adDescriptions.forEach(function(adDescription){
+            if (descriptions.indexOf(adDescription.text) === -1) descriptions.push(adDescription.text);      
+         });       
+
+   }    // end if  
+
+  } // loop
+  
+  
+  headlines.sort();
+  headlines.forEach(item => sheetHeadlines.appendRow([item]));
+  
+  descriptions.sort();
+  descriptions.forEach(item => sheetDescriptions.appendRow([item]));
+
+  
+
+  return ''; 
+}

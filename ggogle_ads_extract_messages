@@ -12,7 +12,7 @@
 // Your google sheet (reachable by same google ads user)
 var SPREADSHEET_URL = "YOUR_G_SHEET_URL" ; 
 
-// Filter by campaign name (or let blamk for whole account extraction) 
+// Filter by campaign name (or let blank for whole account extraction) 
 var CAMPAIGN_LIKE = "" ;  
 
 // Filter by ad status (or let blank for any status)

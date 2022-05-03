@@ -112,7 +112,7 @@ function extractAds(ss) {
   } // loop
   
   headlines.sort();
-  headlines.forEach(function(item){ // Insert string char ' when symbol character begins in a G sheet row
+  headlines.forEach(function(item){ // Insert string char ' when a G sheet row starts with a symbol character
     if (/[+-=]/.test(item)) item = item.replace(lChar = item.charAt(0), "'" + item.charAt(0)) ;   
     sheetHeadlines.appendRow([item]);
   });

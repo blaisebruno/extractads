@@ -19,13 +19,12 @@ var CAMPAIGN_LIKE = "" ;
 var AD_STATUS = "ENABLED" ;  // ENABLED, PAUSED, REMOVED  
 
 
-
 function main() {
   
   var ss = SpreadsheetApp.openByUrl(SPREADSHEET_URL); 
   result = extractAds(ss); 
     
-  } 
+} 
  
   
 function extractAds(ss) {  
@@ -64,11 +63,8 @@ function extractAds(ss) {
   
   while (rows.hasNext()) {
 
-   var row = rows.next();
-    
-   var adType = row['ad_group_ad.ad.type'] ;   
-   Logger.log("adType | " + adType);  
-    
+   var row = rows.next() ;  
+   var adType = row['ad_group_ad.ad.type'] ;     
    var adHeadings, adDescriptions ;  
 
 
@@ -115,14 +111,17 @@ function extractAds(ss) {
 
   } // loop
   
-  
   headlines.sort();
-  headlines.forEach(item => sheetHeadlines.appendRow([item]));
+  headlines.forEach(function(item){ // Insert string char ' when symbol character begins in a G sheet row
+    if (/[+-=]/.test(item)) item = item.replace(lChar = item.charAt(0), "'" + item.charAt(0)) ;   
+    sheetHeadlines.appendRow([item]);
+  });
   
   descriptions.sort();
-  descriptions.forEach(item => sheetDescriptions.appendRow([item]));
-
-  
+  descriptions.forEach(function(item){
+    if (/[+-=]/.test(item)) item = item.replace(lChar = item.charAt(0), "'" + item.charAt(0)) ;
+    sheetDescriptions.appendRow([item]);
+   });  
 
   return ''; 
 }

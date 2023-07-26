@@ -5,7 +5,7 @@
 
 
 // Votre google sheet (accessible par le même user google ads)
-var SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1y6POC7ZMZBkOjdkPclqJ9LxOIUtl7c7HqtKRwGuRkJU/" ; 
+var SPREADSHEET_URL = "YOUR-GSHEET-URL" ; 
 
 // Filtrer par nom de campagne ou laisser vide pour l'extraction de tout le compte 
 var CAMPAIGN_LIKE = "" ;  

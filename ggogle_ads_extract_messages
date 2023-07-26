@@ -81,12 +81,6 @@ function extractAds(ss) {
          adDescriptions = row['ad_group_ad.ad.expanded_text_ad.description2'] ;
          if (descriptions.indexOf(adDescriptions) === -1) descriptions.push(adDescriptions);    
    }  
-   else if (adType == 'GMAIL_AD') {
-         adHeadings = row['ad_group_ad.ad.gmail_ad.teaser.headline'] ;
-         if (headlines.indexOf(adHeadings) === -1) headlines.push(adHeadings);
-         adDescriptions = row['ad_group_ad.ad.gmail_ad.teaser.description'] ;
-         if (descriptions.indexOf(adDescriptions) === -1) descriptions.push(adDescriptions);       
-   } 
    else if (adType == 'RESPONSIVE_SEARCH_AD') {
          adHeadings = row['ad_group_ad.ad.responsive_search_ad.headlines'] ;
          adHeadings.forEach(function(adHeading){

@@ -1,33 +1,28 @@
-
-
-// Ads Extractor 0.99 
-// By Blaise & Bruno  05-2022  - blaisebruno.com 
-// 
+// Ads Extractor 1.03
+// Par Blaise & Bruno 3-2023
 //
-// Extract all the advertising messages (Ads) from a Google Ads account into a Google Sheet (headlines + description) 
-// Ads type: Search (ETA + Responsive), Gmail, Discovery (multi_asset).   Perf_max not reachable by API (05/2022)
+// Extraction de l'intégralité des messsages publicitaires du compte dans un Google Sheet (headlines + description) 
 
 
+// Votre google sheet (accessible par le même user google ads)
+var SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1y6POC7ZMZBkOjdkPclqJ9LxOIUtl7c7HqtKRwGuRkJU/" ; 
 
-// Your google sheet (reachable by same google ads user)
-var SPREADSHEET_URL = "YOUR_G_SHEET_URL" ; 
-
-// Filter by campaign name (or let blank for whole account extraction) 
+// Filtrer par nom de campagne ou laisser vide pour l'extraction de tout le compte 
 var CAMPAIGN_LIKE = "" ;  
 
-// Filter by ad status (or let blank for any status)
-var AD_STATUS = "ENABLED" ;  // ENABLED, PAUSED, REMOVED  
+// Filtrer par ad status
+var AD_STATUS = "ENABLED" ;  // ENABLED, PAUSED, REMOVED ou laisser vide pour l'extraction de toutes lea Ads 
+
 
 
 function main() {
   
   var ss = SpreadsheetApp.openByUrl(SPREADSHEET_URL); 
-  result = extractAds(ss); 
-    
+  result = extractAds(ss);   
 } 
  
   
-function extractAds(ss) {  
+function extractAds(ss) {   
   
  var gaql =  `SELECT ad_group_ad.ad.type, 
               ad_group_ad.ad.responsive_search_ad.headlines,
@@ -37,8 +32,6 @@ function extractAds(ss) {
               ad_group_ad.ad.expanded_text_ad.headline_part3,
               ad_group_ad.ad.expanded_text_ad.description,
               ad_group_ad.ad.expanded_text_ad.description2,
-              ad_group_ad.ad.gmail_ad.teaser.headline,
-              ad_group_ad.ad.gmail_ad.teaser.description,
               ad_group_ad.ad.discovery_multi_asset_ad.headlines,
               ad_group_ad.ad.discovery_multi_asset_ad.descriptions           
               FROM ad_group_ad 
@@ -50,23 +43,43 @@ function extractAds(ss) {
  
   rows = AdsApp.report(gaql, {}).rows() ;  
   
+  var gaqlPMAX =  `SELECT customer.id,
+                    customer.descriptive_name,
+                    campaign.name,
+                    asset_group_asset.field_type,
+                    asset.name,
+                    asset_group.name,
+                    asset.call_to_action_asset.call_to_action,
+                    asset.type,
+                    asset.text_asset.text,
+                    asset.image_asset.full_size.url,
+                    asset.youtube_video_asset.youtube_video_id,
+                    asset_group_asset.performance_label,
+                    asset_group_asset.status
+                    FROM asset_group_asset 
+                `;
+  
+  if (CAMPAIGN_LIKE || AD_STATUS) gaqlPMAX += " WHERE " ;
+  if (CAMPAIGN_LIKE) gaqlPMAX += " campaign.name LIKE '%" + CAMPAIGN_LIKE + "%'" ;   
+  if (AD_STATUS) gaqlPMAX += " asset_group_asset.status = '" + AD_STATUS + "'" ;  
+ 
+  rowsPMAX = AdsApp.report(gaqlPMAX, {}).rows() ;  
+  
+  
   var headlines = [] ;
   var descriptions = [] ; 
   
-  var sheetHeadlines = ss.getSheetByName("Headlines"); 
+  var sheetHeadlines = ss.getSheetByName("Ads"); 
   sheetHeadlines.activate();
   sheetHeadlines.clearContents(); 
   
-  var sheetDescriptions = ss.getSheetByName("Descriptions"); 
-  sheetDescriptions.activate();
-  sheetDescriptions.clearContents(); 
-  
   while (rows.hasNext()) {
 
-   var row = rows.next() ;  
-   var adType = row['ad_group_ad.ad.type'] ;     
+   var row = rows.next();
+    
+   var adType = row['ad_group_ad.ad.type'] ;    
+    
    var adHeadings, adDescriptions ;  
-
 
    if (adType == 'EXPANDED_TEXT_AD') {
          adHeadings = row['ad_group_ad.ad.expanded_text_ad.headline_part1'] ;
@@ -100,22 +113,51 @@ function extractAds(ss) {
          adDescriptions.forEach(function(adDescription){
             if (descriptions.indexOf(adDescription.text) === -1) descriptions.push(adDescription.text);      
          });       
-
-   }    // end if  
+   }   
 
   } // loop
   
-  headlines.sort();
-  headlines.forEach(function(item){ // Insert string char ' when a G sheet row starts with a symbol character
-    if (/[+-=]/.test(item)) item = item.replace(lChar = item.charAt(0), "'" + item.charAt(0)) ;   
-    sheetHeadlines.appendRow([item]);
-  });
-  
-  descriptions.sort();
-  descriptions.forEach(function(item){
-    if (/[+-=]/.test(item)) item = item.replace(lChar = item.charAt(0), "'" + item.charAt(0)) ;
-    sheetDescriptions.appendRow([item]);
-   });  
+   while (rowsPMAX.hasNext()) {
 
-  return ''; 
+   var rowPMAX = rowsPMAX.next();
+   var adType = rowPMAX['asset.type'] ;
+   var fieldType = rowPMAX['asset_group_asset.field_type'] ; 
+    
+   var adHeadings, adDescriptions ;  
+
+   if (adType == 'TEXT') {
+      var adText = rowPMAX['asset.text_asset.text'] ;
+     
+      if (fieldType == 'HEADLINE') {        
+         if (headlines.indexOf(adText) === -1) headlines.push(adText);   
+      } else if (fieldType == 'LONG_HEADLINE'|| fieldType == 'DESCRIPTION') {
+         if (descriptions.indexOf(adText) === -1) descriptions.push(adText);
+      }
+   }  
+
+   } // loop
+
+  headlines.sort();
+  descriptions.sort();
+  
+  var maxLength = Math.max(headlines.length, descriptions.length);
+
+  for (var i = 0; i < maxLength; i++) {
+    var headline = headlines[i] || "";
+    var description = descriptions[i] || "";
+    
+  if (/[+-=]/.test(headline)) {
+    headline = headline.replace(lChar = headline.charAt(0), "'" + headline.charAt(0));
+  }
+
+  if (/[+-=]/.test(description)) {
+    description = description.replace(lChar = description.charAt(0), "'" + description.charAt(0));
+  }
+
+  sheetHeadlines.appendRow([headline, description]);
+  
+}
+
+return '' ;
+
 }
